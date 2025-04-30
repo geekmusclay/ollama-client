@@ -210,11 +210,22 @@ try {
                 exit;
             }
             
+            // Récupérer l'historique des messages de la conversation (limité aux 10 derniers messages)
+            $messageHistory = $messageManager->getMessagesForConversation($conversationId);
+            
+            // Limiter l'historique aux 10 derniers messages pour éviter des prompts trop longs
+            // Note: nous excluons le dernier message car c'est celui que nous venons d'ajouter
+            if (count($messageHistory) > 1) {
+                $messageHistory = array_slice($messageHistory, 0, min(10, count($messageHistory) - 1));
+            } else {
+                $messageHistory = [];
+            }
+            
             // Initialiser le client Ollama
             $client = new Client();
             
-            // Envoyer la réponse en streaming
-            $client->streamMessage($lastUserMessage['content'], $model);
+            // Envoyer la réponse en streaming avec l'historique des messages
+            $client->streamMessage($lastUserMessage['content'], $model, [], $messageHistory);
             exit; // Important pour arrêter l'exécution après le streaming
             
         default:

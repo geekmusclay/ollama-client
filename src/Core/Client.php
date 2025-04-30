@@ -74,10 +74,11 @@ class Client
      * @param string $message Le message à envoyer
      * @param string $model Le modèle à utiliser (par défaut: llama3.2)
      * @param array $options Options supplémentaires pour l'API
+     * @param array $messageHistory Historique des messages précédents (optionnel)
      * @return void
      * @throws Exception En cas d'erreur lors de la requête
      */
-    public function streamMessage(string $message, string $model = 'llama3.2', array $options = []): void
+    public function streamMessage(string $message, string $model = 'llama3.2', array $options = [], array $messageHistory = []): void
     {
         // Configuration des en-têtes pour le streaming
         header('Content-Type: text/event-stream');
@@ -86,9 +87,12 @@ class Client
         
         $url = $this->apiUrl . '/api/generate';
         
+        // Construire le prompt avec l'historique des messages si disponible
+        $prompt = $this->buildPromptWithHistory($message, $messageHistory);
+        
         $data = array_merge([
             'model' => 'llama3.2',
-            'prompt' => $message,
+            'prompt' => $prompt,
             'stream' => true
         ], $options);
         
@@ -128,6 +132,35 @@ class Client
         }
         
         curl_close($ch);
+    }
+    
+    /**
+     * Construit un prompt incluant l'historique des messages pour le contexte
+     * 
+     * @param string $currentMessage Le message actuel de l'utilisateur
+     * @param array $messageHistory L'historique des messages précédents
+     * @return string Le prompt complet avec l'historique
+     */
+    private function buildPromptWithHistory(string $currentMessage, array $messageHistory = []): string
+    {
+        // Si pas d'historique, retourner simplement le message actuel
+        if (empty($messageHistory)) {
+            return $currentMessage;
+        }
+        
+        // Construire le prompt avec l'historique
+        $prompt = "";
+        
+        // Ajouter chaque message de l'historique au prompt
+        foreach ($messageHistory as $message) {
+            $role = $message['role'] === 'user' ? 'Utilisateur' : 'Assistant';
+            $prompt .= "$role: {$message['content']}\n\n";
+        }
+        
+        // Ajouter le message actuel
+        $prompt .= "Utilisateur: $currentMessage\n\nAssistant:";
+        
+        return $prompt;
     }
     
     /**
