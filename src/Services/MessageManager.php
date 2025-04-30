@@ -97,6 +97,32 @@ class MessageManager
     }
     
     /**
+     * Récupère le dernier message de l'utilisateur dans une conversation
+     * 
+     * @param int $conversationId Identifiant de la conversation
+     * @return array|null Le dernier message de l'utilisateur ou null si aucun message n'est trouvé
+     */
+    public function getLastUserMessage(int $conversationId): ?array
+    {
+        try {
+            $stmt = $this->dbConn->prepare("
+                SELECT * FROM messages 
+                WHERE conversation_id = ? 
+                AND role = 'user' 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            ");
+            
+            $stmt->execute([$conversationId]);
+            $message = $stmt->fetch();
+            
+            return $message ?: null;
+        } catch (PDOException $e) {
+            throw new Exception("Erreur lors de la récupération du dernier message utilisateur: " . $e->getMessage());
+        }
+    }
+    
+    /**
      * Récupère un message spécifique
      * 
      * @param int $id Identifiant du message

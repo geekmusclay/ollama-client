@@ -87,7 +87,7 @@ class Client
         $url = $this->apiUrl . '/api/generate';
         
         $data = array_merge([
-            'model' => $model,
+            'model' => 'llama3.2',
             'prompt' => $message,
             'stream' => true
         ], $options);
