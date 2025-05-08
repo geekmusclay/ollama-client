@@ -10,14 +10,19 @@ use Exception;
  */
 class Client
 {
+    private string $model;
     private string $apiUrl;
     
     /**
      * Constructeur
+     * @param string $model Le modèle à utiliser (par défaut: llama3.2)
      * @param string $apiUrl URL de l'API Ollama (par défaut: http://localhost:11434)
      */
-    public function __construct(string $apiUrl = 'http://localhost:11434')
-    {
+    public function __construct(
+        string $model = 'llama3.2', 
+        string $apiUrl = 'http://localhost:11434'
+    ) {
+        $this->model = $model;
         $this->apiUrl = $apiUrl;
     }
     
@@ -25,17 +30,16 @@ class Client
      * Envoie un message à l'API Ollama et retourne la réponse
      * 
      * @param string $message Le message à envoyer
-     * @param string $model Le modèle à utiliser (par défaut: llama3.2)
      * @param array $options Options supplémentaires pour l'API
      * @return array La réponse de l'API
      * @throws Exception En cas d'erreur lors de la requête
      */
-    public function sendMessage(string $message, string $model = 'llama3.2', array $options = []): array
+    public function sendMessage(string $message, array $options = []): array
     {
         $url = $this->apiUrl . '/api/generate';
         
         $data = array_merge([
-            'model' => 'llama3.2',
+            'model' => $this->model,
             'prompt' => $message,
             'stream' => false
         ], $options);
@@ -72,13 +76,12 @@ class Client
      * Cette méthode est utile pour afficher la réponse au fur et à mesure
      * 
      * @param string $message Le message à envoyer
-     * @param string $model Le modèle à utiliser (par défaut: llama3.2)
      * @param array $options Options supplémentaires pour l'API
      * @param array $messageHistory Historique des messages précédents (optionnel)
      * @return void
      * @throws Exception En cas d'erreur lors de la requête
      */
-    public function streamMessage(string $message, string $model = 'llama3.2', array $options = [], array $messageHistory = []): void
+    public function streamMessage(string $message, array $options = [], array $messageHistory = []): void
     {
         // Configuration des en-têtes pour le streaming
         header('Content-Type: text/event-stream');
@@ -91,7 +94,7 @@ class Client
         $prompt = $this->buildPromptWithHistory($message, $messageHistory);
         
         $data = array_merge([
-            'model' => 'llama3.2',
+            'model' => $this->model,
             'prompt' => $prompt,
             'stream' => true
         ], $options);
@@ -105,19 +108,22 @@ class Client
         // Fonction pour traiter les données de streaming
         $callback = function($ch, $data) {
             $jsonData = json_decode($data, true);
-            if ($jsonData !== null) {
-                if (isset($jsonData['response'])) {
-                    echo "data: " . json_encode(['content' => $jsonData['response']]) . "\n\n";
-                    ob_flush();
-                    flush();
-                }
-                
-                if (isset($jsonData['done']) && $jsonData['done'] === true) {
-                    echo "event: done\ndata: null\n\n";
-                    ob_flush();
-                    flush();
-                }
+            if ($jsonData === null) {
+                return strlen($data);
             }
+            
+            if (isset($jsonData['response'])) {
+                echo "data: " . json_encode(['content' => $jsonData['response']]) . "\n\n";
+                ob_flush();
+                flush();
+            }
+            
+            if (isset($jsonData['done']) && $jsonData['done'] === true) {
+                echo "event: done\ndata: null\n\n";
+                ob_flush();
+                flush();
+            }
+            
             return strlen($data);
         };
         
